@@ -7,12 +7,13 @@ import './App.css';
  * State declaration for <App />
  */
 interface IState {
-  data: ServerRespond[],
+  data: ServerRespond[];
+  showGraph: boolean;
 }
 
 /**
  * The parent element of the react app.
- * It renders title, button and Graph react element.
+ * It renders title, button, and Graph react element.
  */
 class App extends Component<{}, IState> {
   constructor(props: {}) {
@@ -22,6 +23,7 @@ class App extends Component<{}, IState> {
       // data saves the server responds.
       // We use this state to parse data down to the child element (Graph) as element property
       data: [],
+      showGraph: false,
     };
   }
 
@@ -29,18 +31,52 @@ class App extends Component<{}, IState> {
    * Render Graph react component with state.data parse as property data
    */
   renderGraph() {
-    return (<Graph data={this.state.data}/>)
+    if (this.state.showGraph) {
+      return (<Graph data={this.state.data}/>);
+    }
+    return null;
   }
 
   /**
    * Get new data from server and update the state with the new data
    */
   getDataFromServer() {
-    DataStreamer.getData((serverResponds: ServerRespond[]) => {
-      // Update the state by creating a new array of data that consists of
-      // Previous data in the state and the new data from server
-      this.setState({ data: [...this.state.data, ...serverResponds] });
-    });
+    let x = 0;
+    const interval = setInterval(() => {
+      DataStreamer.getData((serverResponds: ServerRespond[]) => {
+        if (serverResponds.length > 0) {
+          this.setState((prevState) => ({
+            data: [...prevState.data, ...serverResponds],
+            showGraph: true,
+          }));
+        }
+      });
+      x++;
+      if (x > 100) {
+        clearInterval(interval);
+      }
+    }, 100);
+  }
+
+  /**
+   * Lifecycle method to set attributes on a DOM element
+   */
+  componentDidMount() {
+    // Access the DOM element using refs or querySelector
+    const elem = document.getElementById('yourElementId'); // Replace 'yourElementId' with the actual ID of your target element
+
+    if (elem) {
+      elem.setAttribute('view', 'Y_Line');
+      elem.setAttribute('column-pivots', '["stock"]');
+      elem.setAttribute('row-pivots', '["timestamp"]');
+      elem.setAttribute('columns', '["top ask_price"]');
+      elem.setAttribute('aggregates', JSON.stringify({
+        stock: 'distinct count',
+        'top ask price': 'avg',
+        'top bid_price': 'avg',
+        timestamp: 'distinct count'
+      }));
+    }
   }
 
   /**
@@ -54,12 +90,10 @@ class App extends Component<{}, IState> {
         </header>
         <div className="App-content">
           <button className="btn btn-primary Stream-button"
-            // when button is click, our react app tries to request
-            // new data from the server.
-            // As part of your task, update the getDataFromServer() function
-            // to keep requesting the data every 100ms until the app is closed
-            // or the server does not return anymore data.
-            onClick={() => {this.getDataFromServer()}}>
+            onClick={() => {
+              this.getDataFromServer();
+            }}
+          >
             Start Streaming Data
           </button>
           <div className="Graph">
@@ -72,3 +106,4 @@ class App extends Component<{}, IState> {
 }
 
 export default App;
+
